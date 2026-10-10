@@ -2,7 +2,7 @@
 layout: default
 title: Alarm sources
 parent: Outlook Guardian
-nav_order: 40
+nav_order: 50
 ---
 
 # Alarm sources
