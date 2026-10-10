@@ -38,7 +38,7 @@ The firmware is updated over USB. Over-the-air updates are not available, becaus
 
 ## Using it
 
-On the first start the device opens a WiFi access point called `outlook-guardian` for entering the boat's WiFi settings.
+On the first start the device opens a WiFi access point called `outlook-guardian`, with the password `thisisfine`, for entering the boat's WiFi settings at `http://192.168.4.1/`.
 Approve its access request on the Signal K server with read/write permission, then open `http://outlook-guardian.local/` and choose the language and voice under *Speech and alarms*.
 
 | LED | Meaning |
@@ -53,11 +53,15 @@ The LED blinks until the alarms have been acknowledged or snoozed.
 
 ## Outlook Guardian documentation
 
-The full documentation is in [`docs/pages/outlook_guardian`](docs/pages/outlook_guardian/index.md):
+A step-by-step guide, from a bare board to a speaking device, is in [`docs/pages/outlook_guardian`](docs/pages/outlook_guardian/index.md):
 
-* [Hardware](docs/pages/outlook_guardian/hardware.md) - parts, wiring and pin assignments
-* [Building and flashing](docs/pages/outlook_guardian/building.md)
-* [Using the device](docs/pages/outlook_guardian/usage.md) - settings, LED and buttons
+1. [Assemble the hardware](docs/pages/outlook_guardian/hardware.md)
+2. [Install the software and flash the firmware](docs/pages/outlook_guardian/building.md)
+3. [Connect to WiFi and Signal K](docs/pages/outlook_guardian/first_start.md)
+4. [Configure and test](docs/pages/outlook_guardian/usage.md)
+
+Reference:
+
 * [Alarm sources](docs/pages/outlook_guardian/alarm_sources.md) - how Signal K notifications and NMEA 2000 alerts are handled
 * [Development notes](docs/pages/outlook_guardian/development.md) - code structure, languages and flash layout
 

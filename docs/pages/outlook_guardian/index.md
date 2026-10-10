@@ -23,20 +23,20 @@ It is built with SensESP and lives in this repository as the application [`examp
 
 Speech is synthesized on the device with the [PicoTTS](https://github.com/DiUS/esp-picotts) engine and played through a MAX98357A I2S amplifier. No internet connection or cloud service is involved.
 
-## Where to go next
+## Step-by-step guide
+
+The guide starts from a bare board and ends with the device speaking a test alarm. Follow the steps in order.
+
+| Step | Page | What you do |
+|------|------|-------------|
+| 1 | [Assemble the hardware](hardware) | Collect the parts and wire them to the board |
+| 2 | [Install the software and flash the firmware](building) | Install the tools, get the source, build it and load it onto the board |
+| 3 | [Connect to WiFi and Signal K](first_start) | Join the device to the boat's network and let it into the Signal K server |
+| 4 | [Configure and test](usage) | Choose the language and voice, raise a test alarm, learn the LED and the buttons |
+
+Reference pages, for when you need the details:
 
 | Page | Contents |
 |------|----------|
-| [Hardware](hardware) | Parts, wiring and pin assignments |
-| [Building and flashing](building) | Getting the firmware onto the board |
-| [Using the device](usage) | First start, settings, LED, buttons |
-| [Alarm sources](alarm_sources) | How Signal K notifications and NMEA 2000 alerts are handled |
+| [Alarm sources](alarm_sources) | Exactly how Signal K notifications and NMEA 2000 alerts are handled |
 | [Development notes](development) | Code structure, languages, flash layout |
-
-## Quick start
-
-1. Wire the amplifier, the CAN transceiver and the two buttons as described in [Hardware](hardware).
-2. Build and flash the `pioarduino_esp32s3` environment as described in [Building and flashing](building).
-3. Connect to the `outlook-guardian` WiFi access point and enter your boat's WiFi settings.
-4. Approve the device's access request on the Signal K server, with **read/write** permission.
-5. Open `http://outlook-guardian.local/` and choose the language and voice under *Speech and alarms*.
