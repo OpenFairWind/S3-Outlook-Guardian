@@ -83,7 +83,7 @@ Send the same delta again with `"state": "normal"`. The LED goes off.
 ## 4.6 Install it on board
 
 1. Disconnect the USB cable.
-2. Power the board's 5 V pin from the 12 V to 5 V converter, as described in [Power the device](hardware#power-the-device).
+2. Power the board's 5 V pin from the 5 V DC-DC converter, as described in [Power the device](hardware#power-the-device).
 3. If you wired the CAN transceiver, connect it to the NMEA 2000 bus with a drop cable.
 
 The device is ready. The rest of this page describes how it behaves in daily use.

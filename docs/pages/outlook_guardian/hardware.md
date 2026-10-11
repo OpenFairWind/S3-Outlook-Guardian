@@ -7,7 +7,7 @@ nav_order: 10
 
 # Step 1: Assemble the hardware
 
-Do all the wiring with the board **unpowered**: USB cable unplugged and no 12 V connected.
+Do all the wiring with the board **unpowered**: USB cable unplugged and no boat supply connected.
 
 This page lists every part and every connection, so that the device can be rebuilt exactly. The amplifier and the speaker are needed for the device to speak; the CAN transceiver and the display are optional, and the firmware runs without them.
 
@@ -29,8 +29,11 @@ The diagram shows one wire per connection. The board has several GND pins and th
 | SSD1306 OLED display | Optional. A 0.96" 128x64 I2C module with four pins (GND, VCC, SCL, SDA). |
 | USB cable | A data cable that fits the board, for flashing. |
 | Breadboard and jumper wires | Or solder the connections for a permanent installation. |
-| 12 V to 5 V DC-DC converter | For powering the device on board, once everything works. A step-down (buck) module with a regulated 5 V output of 2 A or more. |
-| Fuse holder and 1 A fuse | For the 12 V supply wire. |
+| Wide-input 5 V DC-DC converter | For powering the device on board, once everything works. A step-down (buck) module with a fixed, regulated 5 V output of 2 A or more and an input range that covers the boat's supply: 9 to 36 V or wider for a 12 V or 24 V boat. See [Choose the converter](#choose-the-converter). |
+| Fuse holder and 2 A slow-blow fuse | For the supply wire. |
+| Schottky diode, 3 A, 40 V or more | Such as 1N5822 or SS34. Reverse-polarity protection, if the converter has none built in. |
+| TVS diode | Such as SMBJ33A or 1.5KE36A. Clamps voltage spikes on the supply, if the converter has no surge protection built in. |
+| Electrolytic capacitor, 470 µF or more, 50 V | Optional. Across the converter's input, to ride through the voltage dip when the engine is started. |
 | Electrolytic capacitor, 470 µF or more, 10 V | Optional. Across the amplifier's VIN and GND, if the device restarts or the sound crackles at high volume. |
 
 ## 1.2 Wire the amplifier
@@ -120,18 +123,40 @@ Before applying power, check that:
 
 On the bench, power the board from USB through either of its USB sockets. This is all that is needed for steps 2 to 4.
 
-For the installation on board, power it from the boat's 12 V supply through the DC-DC converter:
+For the installation on board, power it from the boat's 12 V or 24 V supply through the DC-DC converter. The supply of a boat is not a steady voltage: it dips below 10 V when the engine is started, rises to about 14.5 V (12 V boat) or 29 V (24 V boat) while charging, and carries short spikes well above that. The converter and the protection parts in front of it are chosen for the whole range, 9 to 32 V.
+
+### Choose the converter
+
+| Type | Input | Notes |
+|------|-------|-------|
+| Potted automotive 12/24 V to 5 V module, 3 A | Typically 8 to 40 V | The simplest choice: fixed output, sealed against moisture, often with reverse-polarity and surge protection built in. Check the input range in its data, not only the "12/24 V" label. |
+| Pololu D24V22F5 or D36V28F5 | Up to 36 V or 50 V | Fixed 5 V, reverse-polarity protection built in. |
+| Traco TSR 2-2450, Recom R-78E5.0-2.0 or similar | Up to 36 V | Fixed 5 V, 2 A, in the footprint of a 7805. Needs the protection parts below. |
+
+- Prefer a fixed 5 V output. The trimmer of an adjustable module (such as the common LM2596 boards) can drift with vibration, and more than 5.5 V damages the amplifier and the board.
+- Do not use a linear regulator such as the 7805: at 28 V it would have to dissipate more than 10 W.
+- 2 A is the minimum: the board draws peaks of about 0.5 A with WiFi active, and the amplifier up to about 1 A at full volume into a 4 Ω speaker.
+
+### Wire the supply
 
 | From | To |
 |------|----|
-| +12 V | Converter IN+, through the 1 A fuse placed close to the 12 V source |
+| Boat supply + | Fuse, placed close to the source |
+| Fuse | Anode of the Schottky diode |
+| Cathode of the Schottky diode | Converter IN+ |
 | 0 V (battery negative) | Converter IN− |
+| TVS diode | Across converter IN+ and IN−, cathode (the marked end) to IN+ |
+| 50 V capacitor | Across converter IN+ and IN−, observing its polarity |
 | Converter OUT+ | 5 V pin of the board |
 | Converter OUT− | GND of the board |
 
-1. If the converter's output is adjustable, set it to 5.0 V with a multimeter **before** connecting it to the board. More than 5.5 V damages the amplifier and the board.
+Leave out the Schottky diode and the TVS diode if the converter's data states that it has reverse-polarity and surge protection.
+
+1. Check with a multimeter that the converter's output is 5.0 V **before** connecting it to the board. More than 5.5 V damages the amplifier and the board.
 2. Do not connect the converter and a USB cable at the same time. Disconnect the converter's output before plugging the board into a computer.
-3. The 12 V can be taken from the NMEA 2000 drop cable (NET-S red, NET-C black) or from any fused 12 V circuit. On a 24 V boat, use a converter rated for that input.
+3. Take the supply from any fused 12 V or 24 V circuit, or from the NMEA 2000 drop cable (NET-S red, NET-C black). The NMEA 2000 supply is 9 to 16 V, also on a 24 V boat, and a device may draw no more than 1 A from it.
+4. The TVS diode limits spikes to about 50 V, not to the converter's rated input. On a 24 V boat, use a converter rated for 60 V or one with surge protection built in.
+5. These converters are not isolated: battery negative is connected to the GND of the board. If the device is powered from a different supply than the one feeding the NMEA 2000 bus, and the two do not share their negative, use an isolated converter or power the device from the bus.
 
 The 3.3 V pin of the board is an output of its own regulator. It supplies the CAN transceiver and the display; never feed it from outside.
 
@@ -164,8 +189,9 @@ Every wire of the complete device:
 | Display SCL | Board GPIO 9 | I2C clock |
 | Converter OUT+ | Board 5V | 5 V |
 | Converter OUT− | Board GND | GND |
-| Converter IN+ | +12 V, through a 1 A fuse | Supply |
+| Converter IN+ | Boat supply +, through the 2 A fuse and the Schottky diode | Supply |
 | Converter IN− | 0 V, and NMEA 2000 NET-C (black) | Supply |
+| TVS diode, 50 V capacitor | Across converter IN+ and IN− | Supply |
 
 The amplifier's SD and GAIN pins and all the other pins of the board stay unconnected.
 
