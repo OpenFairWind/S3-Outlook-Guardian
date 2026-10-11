@@ -23,11 +23,13 @@ nav_order: 60
 `outlook_guardian.cpp` is organised around one table of alarms, filled by either source:
 
 - `GuardianConfig` holds the settings shown in the web interface.
-- `AlarmLed` replaces the SensESP system status LED and shows the alarm state.
+- `AlarmLed` replaces the SensESP system status LED and shows the alarm state, or the audio fault set by `setup()` when the I2S output or the speech engine does not start. In that case `tts` stays null and nothing is spoken.
 - `handle_sk_notification()` turns a Signal K notification into an alarm.
 - `handle_n2k_message()` collects the NMEA 2000 alert messages, and `raise_n2k_alarms()` turns them into alarms once their sentence can be composed.
 - `process_alarms()` runs ten times a second. It wakes up snoozed alarms, picks the next alarm to speak and updates the LED.
 - `acknowledge_alarms()` and `snooze_alarms()` are called by the buttons.
+- `update_display()` draws the network and stream status and `latest_notification` on the SSD1306 display, if one answers on the I2C bus. It sends a frame only when the picture has changed. Without a display it does nothing but look for one every ten seconds.
+- `SourcesConfig` holds the Signal K paths and the NMEA 2000 alert types and categories to announce. `setup()` creates one `NotificationListener` per path, which is why a change needs a restart.
 - `check_alarm_source()` switches between Signal K and NMEA 2000 as the server connection comes and goes.
 
 Everything runs on the SensESP event loop. The speech synthesis runs in its own task inside `PicoTTS`.
@@ -73,4 +75,4 @@ Changing the partition table moves the configuration filesystem, so the device's
 
 ## Not verified
 
-The firmware has been built, flashed and seen to start on an ESP32-S3-DevKitC-1 N16R8. The following have not yet been tested against real equipment: the audio output in each language and voice, the handling of live Signal K notifications including the button requests, and the reception of NMEA 2000 alerts.
+The firmware has been built, flashed and seen to start on an ESP32-S3-DevKitC-1 N16R8. The following have not yet been tested against real equipment: the audio output in each language and voice, the handling of live Signal K notifications including the button requests, the reception of NMEA 2000 alerts, the SSD1306 display, and the audio fault indication on the LED.

@@ -72,6 +72,8 @@ If the upload cannot find or connect to the board, hold the **BOOT** button, pre
 
 Within about ten seconds of the restart, the speaker says **"Signal K Outlook Guardian active"**.
 
+If instead the on-board LED flashes red twice every second, the audio output failed to start. See [RGB LED](usage#rgb-led).
+
 To see what the device is doing, open the serial monitor with the *Serial Monitor* button (the plug) in the status bar, or:
 
 ```bash

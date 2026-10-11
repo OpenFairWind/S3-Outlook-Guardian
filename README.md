@@ -4,8 +4,10 @@ The Outlook Guardian is a talking alarm annunciator for boats: an ESP32-S3 devic
 
 * Speaks the message of every [Signal K](https://signalk.org) notification that is raised
 * Falls back to the NMEA 2000 alert messages (PGN 126983 and 126985) when the Signal K server is not connected
-* Shows the severity of the alarm on the on-board RGB LED
+* Shows the severity of the alarm on the on-board RGB LED, which flashes red if the audio output fails to start
+* Shows the IP address, the WiFi mode, the stream status and the latest notification on an optional SSD1306 OLED display
 * Two push buttons acknowledge and snooze the alarms, and tell the Signal K server so
+* The Signal K notification paths and the NMEA 2000 alert types to announce, and the welcome message, are chosen in the web interface
 * Six languages (US and UK English, Italian, German, Spanish, French) with a choice of voice, speed and volume in the web interface
 * Speech is synthesized on the device with PicoTTS and played through a MAX98357A I2S amplifier; no internet connection is needed
 
@@ -17,6 +19,7 @@ It is built with SensESP, and this repository is a fork of [SignalK/SensESP](htt
 * MAX98357A I2S amplifier and a speaker
 * 3.3 V CAN transceiver for the NMEA 2000 bus
 * Two push buttons
+* SSD1306 128x64 I2C OLED display (optional)
 
 | Function | GPIO |
 |----------|------|
@@ -24,6 +27,7 @@ It is built with SensESP, and this repository is a fork of [SignalK/SensESP](htt
 | CAN TX / RX | 17 / 18 |
 | Acknowledge button | 15 |
 | Snooze button | 16 |
+| Display SDA / SCL | 8 / 9 |
 | RGB LED | 48 |
 
 ## Building and flashing

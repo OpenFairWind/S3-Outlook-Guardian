@@ -1,12 +1,16 @@
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <N2kMsg.h>
 #include <NMEA2000.h>
 #include <NMEA2000_esp32.h>
+#include <WiFi.h>
+#include <Wire.h>
 #include <map>
 #include <memory>
 #include <vector>
 
 #include "sensesp/sensors/digital_input.h"
-#include "sensesp/signalk/signalk_prefix_listener.h"
+#include "sensesp/signalk/signalk_listener.h"
 #include "sensesp/signalk/signalk_put_request.h"
 #include "sensesp/system/lambda_consumer.h"
 #include "sensesp/system/max98357a.h"
@@ -45,25 +49,42 @@ using namespace sensesp;
 #ifndef PIN_RGB_LED
 #define PIN_RGB_LED 48
 #endif
+// SSD1306 128x64 OLED display on I2C
+#ifndef OLED_SDA_PIN
+#define OLED_SDA_PIN 8
+#endif
+#ifndef OLED_SCL_PIN
+#define OLED_SCL_PIN 9
+#endif
+#ifndef OLED_I2C_ADDRESS
+#define OLED_I2C_ADDRESS 0x3C
+#endif
 
 // Signal K Outlook Guardian: speaks vessel alarms through a MAX98357A I2S
 // amplifier using PicoTTS text-to-speech and shows them on the on-board RGB
 // LED.
 //
 // - Signal K: subscribes to `notifications.*` and speaks the `message` of
-//   every raised notification.
+//   every raised notification. The paths to subscribe to are set in the web
+//   UI; the default is all of them.
 // - NMEA 2000: listens to the Alert (PGN 126983) and Alert Text (PGN 126985)
 //   messages through a CAN transceiver, composes a sentence out of the alert
 //   type, category, description and location, and speaks it. This is a
 //   fallback: NMEA 2000 is ignored while the Signal K server is connected.
+//   The alert types and categories to announce are set in the web UI.
 // - An alarm is repeated until it clears or is acknowledged or snoozed with
 //   the two push buttons. For Signal K notifications the button press is
 //   sent to the server as a PUT on the notification's `method`.
 // - The LED color follows the most severe alarm: blue for alert/caution,
 //   yellow for warning, red for alarm and emergency. It blinks until the
 //   alarm is acknowledged or snoozed, and is off when there is no alarm.
-// - The language, voice, volume, repeat interval and snooze time are set in
-//   the web UI.
+//   It flashes red twice a second if the audio output failed to start; the
+//   alarms are then shown on the LED and the display, but not spoken.
+// - An optional SSD1306 OLED display shows the IP address, the WiFi mode,
+//   the state of the Signal K and NMEA 2000 streams and the latest
+//   notification received. The firmware works the same without it.
+// - The language, voice, volume, repeat interval, snooze time and welcome
+//   message are set in the web UI.
 
 enum class Severity { kNone, kAlert, kWarn, kAlarm, kEmergency };
 
@@ -103,6 +124,8 @@ class GuardianConfig : public FileSystemSaveable {
     root["volume"] = volume_;
     root["repeat_interval"] = repeat_interval_s_;
     root["snooze_time"] = snooze_time_min_;
+    root["welcome_enabled"] = welcome_enabled_;
+    root["welcome_message"] = welcome_message_;
     return true;
   }
 
@@ -118,6 +141,9 @@ class GuardianConfig : public FileSystemSaveable {
     volume_ = constrain(config["volume"] | volume_, 0, 100);
     repeat_interval_s_ = max(config["repeat_interval"] | repeat_interval_s_, 0);
     snooze_time_min_ = max(config["snooze_time"] | snooze_time_min_, 1);
+    welcome_enabled_ = config["welcome_enabled"] | welcome_enabled_;
+    welcome_message_ = config["welcome_message"] | welcome_message_;
+    welcome_message_.trim();
     if (on_change_) {
       on_change_();
     }
@@ -129,6 +155,9 @@ class GuardianConfig : public FileSystemSaveable {
   float volume() const { return volume_ / 100.0f; }
   uint32_t repeat_interval_ms() const { return repeat_interval_s_ * 1000UL; }
   uint32_t snooze_time_ms() const { return snooze_time_min_ * 60000UL; }
+  bool welcome_enabled() const { return welcome_enabled_; }
+  // Empty for the standard announcement in the configured language.
+  const String& welcome_message() const { return welcome_message_; }
 
   // Wrap the text in the PicoTTS markup that selects the voice.
   String markup(String text) const {
@@ -160,6 +189,8 @@ class GuardianConfig : public FileSystemSaveable {
   int volume_ = 50;
   int repeat_interval_s_ = 30;
   int snooze_time_min_ = 5;
+  bool welcome_enabled_ = true;
+  String welcome_message_;
   std::function<void()> on_change_;
 };
 
@@ -184,7 +215,120 @@ const String ConfigSchema(const GuardianConfig& obj) {
          R"###(,"speed":{"title":"Speech speed (%, 50-200)","type":"integer"})###"
          R"###(,"volume":{"title":"Volume (%)","type":"integer"})###"
          R"###(,"repeat_interval":{"title":"Repeat an unacknowledged alarm every (s, 0 = speak once)","type":"integer"})###"
-         R"###(,"snooze_time":{"title":"Snooze time (min)","type":"integer"}}})###";
+         R"###(,"snooze_time":{"title":"Snooze time (min)","type":"integer"})###"
+         R"###(,"welcome_enabled":{"title":"Speak a welcome message at startup","type":"boolean"})###"
+         R"###(,"welcome_message":{"title":"Welcome message (empty = the standard announcement)","type":"string"}}})###";
+}
+
+// Which notifications are announced, by source.
+constexpr char kNotificationsPrefix[] = "notifications.";
+constexpr size_t kMaxSignalKPaths = 16;
+
+class SourcesConfig : public FileSystemSaveable {
+ public:
+  SourcesConfig(const String& config_path) : FileSystemSaveable(config_path) {
+    load();
+  }
+
+  bool to_json(JsonObject& root) override {
+    root["sk_paths"] = sk_paths_;
+    root["n2k_emergency"] = n2k_emergency_;
+    root["n2k_alarm"] = n2k_alarm_;
+    root["n2k_warning"] = n2k_warning_;
+    root["n2k_caution"] = n2k_caution_;
+    root["n2k_navigational"] = n2k_navigational_;
+    root["n2k_technical"] = n2k_technical_;
+    return true;
+  }
+
+  bool from_json(const JsonObject& config) override {
+    sk_paths_ = config["sk_paths"] | sk_paths_;
+    sk_paths_.trim();
+    n2k_emergency_ = config["n2k_emergency"] | n2k_emergency_;
+    n2k_alarm_ = config["n2k_alarm"] | n2k_alarm_;
+    n2k_warning_ = config["n2k_warning"] | n2k_warning_;
+    n2k_caution_ = config["n2k_caution"] | n2k_caution_;
+    n2k_navigational_ = config["n2k_navigational"] | n2k_navigational_;
+    n2k_technical_ = config["n2k_technical"] | n2k_technical_;
+    return true;
+  }
+
+  // The Signal K paths to subscribe to, which may contain `*` wildcards.
+  // Paths are separated by commas or spaces, and "notifications." is added
+  // to those that lack it. All the notifications if none is given.
+  std::vector<String> signalk_paths() const {
+    std::vector<String> paths;
+    String list = sk_paths_;
+    list.replace(',', ' ');
+    list.replace(';', ' ');
+    list.replace('\n', ' ');
+    int start = 0;
+    while (start < static_cast<int>(list.length()) &&
+           paths.size() < kMaxSignalKPaths) {
+      int end = list.indexOf(' ', start);
+      if (end < 0) {
+        end = list.length();
+      }
+      String path = list.substring(start, end);
+      start = end + 1;
+      if (path.length() == 0) {
+        continue;
+      }
+      if (!path.startsWith(kNotificationsPrefix)) {
+        path = kNotificationsPrefix + path;
+      }
+      bool known = false;
+      for (const String& other : paths) {
+        known = known || other == path;
+      }
+      if (!known) {
+        paths.push_back(path);
+      }
+    }
+    if (paths.empty()) {
+      paths.push_back(String(kNotificationsPrefix) + "*");
+    }
+    return paths;
+  }
+
+  // Whether an NMEA 2000 alert of this type and category (PGN 126983) is to
+  // be announced.
+  bool n2k_alert_enabled(uint8_t type, uint8_t category) const {
+    if ((category == 0 && !n2k_navigational_) ||
+        (category == 1 && !n2k_technical_)) {
+      return false;
+    }
+    switch (type) {
+      case 1:
+        return n2k_emergency_;
+      case 2:
+        return n2k_alarm_;
+      case 5:
+        return n2k_warning_;
+      default:
+        return n2k_caution_;
+    }
+  }
+
+ protected:
+  String sk_paths_ = "notifications.*";
+  bool n2k_emergency_ = true;
+  bool n2k_alarm_ = true;
+  bool n2k_warning_ = true;
+  bool n2k_caution_ = true;
+  bool n2k_navigational_ = true;
+  bool n2k_technical_ = true;
+};
+
+const String ConfigSchema(const SourcesConfig& obj) {
+  return R"###({"type":"object","properties":{)###"
+         R"###("sk_paths":{"title":"Signal K notification paths (comma separated, * = any)","type":"string"})###"
+         R"###(,"n2k_emergency":{"title":"NMEA 2000: emergency alarms","type":"boolean"})###"
+         R"###(,"n2k_alarm":{"title":"NMEA 2000: alarms","type":"boolean"})###"
+         R"###(,"n2k_warning":{"title":"NMEA 2000: warnings","type":"boolean"})###"
+         R"###(,"n2k_caution":{"title":"NMEA 2000: cautions and other alerts","type":"boolean"})###"
+         R"###(,"n2k_navigational":{"title":"NMEA 2000: navigational alerts","type":"boolean"})###"
+         R"###(,"n2k_technical":{"title":"NMEA 2000: technical alerts","type":"boolean"}}})###";
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -200,6 +344,9 @@ class AlarmLed : public BaseSystemStatusLed {
     severity_ = severity;
     blinking_ = blinking;
   }
+
+  // The audio output does not work: flash red whatever the alarm state.
+  void set_fault(bool fault) { fault_ = fault; }
 
  protected:
   // Called every few milliseconds by the base class.
@@ -224,6 +371,11 @@ class AlarmLed : public BaseSystemStatusLed {
     if (blinking_ && (millis() / half_period_ms) % 2 == 1) {
       color = 0x000000;
     }
+    if (fault_) {
+      // Two short flashes a second, unlike any alarm.
+      const uint32_t phase = millis() % 1000;
+      color = phase < 100 || (phase >= 200 && phase < 300) ? 0xff0000 : 0;
+    }
     if (color == shown_color_) {
       return;
     }
@@ -239,6 +391,7 @@ class AlarmLed : public BaseSystemStatusLed {
   uint8_t brightness_;
   Severity severity_ = Severity::kNone;
   bool blinking_ = false;
+  bool fault_ = false;
   // Not a color, so that the LED is switched off on the first call.
   uint32_t shown_color_ = 0xffffffff;
 };
@@ -246,13 +399,19 @@ class AlarmLed : public BaseSystemStatusLed {
 ///////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<GuardianConfig> config;
+std::shared_ptr<SourcesConfig> sources;
 std::shared_ptr<AlarmLed> alarm_led;
 std::shared_ptr<MAX98357A> amplifier;
 std::shared_ptr<PicoTTS> tts;
-std::shared_ptr<SKPrefixListener> notification_listener;
 tNMEA2000* nmea2000;
+// When the last NMEA 2000 message of any kind was received
+bool n2k_message_received = false;
+uint32_t n2k_message_at_ms = 0;
 
 void say(const String& text) {
+  if (tts == nullptr) {
+    return;  // The audio output failed to start
+  }
   tts->say(config->markup(text), config->language());
 }
 
@@ -290,6 +449,16 @@ struct Alarm {
 // Keyed by the Signal K path, or by "n2k:" and the NMEA 2000 alert identity.
 std::map<String, Alarm> alarms;
 
+// The latest notification received, kept for the display after it clears.
+struct LatestNotification {
+  bool received = false;
+  String key;
+  bool from_signalk = false;
+  Severity severity = Severity::kNone;
+  String message;
+};
+LatestNotification latest_notification;
+
 void raise_alarm(const String& key, bool from_signalk, Severity severity,
                  const String& message, bool audible, bool remote_acknowledged,
                  const String& method = "") {
@@ -307,6 +476,7 @@ void raise_alarm(const String& key, bool from_signalk, Severity severity,
     alarm.spoken = false;
     alarm.acknowledged = false;
     alarm.snoozed = false;
+    latest_notification = {true, key, from_signalk, severity, message};
   }
   alarm.from_signalk = from_signalk;
   alarm.severity = severity;
@@ -411,10 +581,238 @@ void process_alarms() {
   }
 
   alarm_led->set_alarm(led_severity, pending);
-  if (next != nullptr && !tts->is_speaking()) {
+  if (next != nullptr && tts != nullptr && !tts->is_speaking()) {
     next->spoken = true;
     next->spoken_at_ms = now;
     say(next->message);
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// OLED display
+
+constexpr int kDisplayWidth = 128;
+constexpr int kDisplayHeight = 64;
+// Characters per line and lines of the notification message, in the 6x8 font
+constexpr size_t kDisplayColumns = kDisplayWidth / 6;
+constexpr int kDisplayMessageLines = 4;
+// The NMEA 2000 stream is taken as lost after this long without a message.
+constexpr uint32_t kN2kStreamTimeoutMs = 5000;
+
+Adafruit_SSD1306 display(kDisplayWidth, kDisplayHeight, &Wire, -1);
+// The display is optional: false while it does not answer on the I2C bus.
+bool display_found = false;
+// How often to look for a display that is not there.
+constexpr uint32_t kDisplayProbeIntervalMs = 10000;
+
+// Convert UTF-8 to the code page 437 of the display font. Accented letters
+// the font lacks lose their accent.
+String to_display_text(const String& text) {
+  // Latin-1 code points from U+00A0 on, in pairs with their replacement.
+  static const uint8_t kLatin1[][2] = {
+      {0xa1, 0xad}, {0xb0, 0xf8}, {0xbf, 0xa8}, {0xc0, 'A'},  {0xc1, 'A'},
+      {0xc2, 'A'},  {0xc4, 0x8e}, {0xc7, 0x80}, {0xc8, 'E'},  {0xc9, 0x90},
+      {0xca, 'E'},  {0xcb, 'E'},  {0xcc, 'I'},  {0xcd, 'I'},  {0xce, 'I'},
+      {0xcf, 'I'},  {0xd1, 0xa5}, {0xd2, 'O'},  {0xd3, 'O'},  {0xd4, 'O'},
+      {0xd6, 0x99}, {0xd9, 'U'},  {0xda, 'U'},  {0xdb, 'U'},  {0xdc, 0x9a},
+      {0xdf, 0xe1}, {0xe0, 0x85}, {0xe1, 0xa0}, {0xe2, 0x83}, {0xe4, 0x84},
+      {0xe7, 0x87}, {0xe8, 0x8a}, {0xe9, 0x82}, {0xea, 0x88}, {0xeb, 0x89},
+      {0xec, 0x8d}, {0xed, 0xa1}, {0xee, 0x8c}, {0xef, 0x8b}, {0xf1, 0xa4},
+      {0xf2, 0x95}, {0xf3, 0xa2}, {0xf4, 0x93}, {0xf6, 0x94}, {0xf9, 0x97},
+      {0xfa, 0xa3}, {0xfb, 0x96}, {0xfc, 0x81},
+  };
+  String converted;
+  converted.reserve(text.length());
+  for (size_t i = 0; i < text.length(); i++) {
+    const uint8_t byte = text[i];
+    if (byte < 0x80) {
+      converted += static_cast<char>(byte < ' ' ? ' ' : byte);
+      continue;
+    }
+    if ((byte & 0xc0) == 0x80) {
+      continue;  // Continuation byte of a character already handled
+    }
+    char replacement = '?';
+    if ((byte == 0xc2 || byte == 0xc3) && i + 1 < text.length()) {
+      const uint8_t code = ((byte & 0x03) << 6) | (text[i + 1] & 0x3f);
+      for (const auto& pair : kLatin1) {
+        if (pair[0] == code) {
+          replacement = static_cast<char>(pair[1]);
+        }
+      }
+    }
+    converted += replacement;
+  }
+  return converted;
+}
+
+// Print the text word-wrapped from the cursor position, on at most
+// `max_lines` lines.
+void print_wrapped(const String& text, int max_lines) {
+  const int x = display.getCursorX();
+  int y = display.getCursorY();
+  size_t start = 0;
+  for (int line = 0; line < max_lines && start < text.length(); line++) {
+    while (start < text.length() && text[start] == ' ') {
+      start++;
+    }
+    size_t end = start + kDisplayColumns;
+    if (end > text.length()) {
+      end = text.length();
+    }
+    if (end < text.length() && text[end] != ' ') {
+      // Break at the last space, unless the word fills the whole line.
+      const int space = text.lastIndexOf(' ', end);
+      if (space > static_cast<int>(start)) {
+        end = space;
+      }
+    }
+    display.setCursor(x, y);
+    display.print(text.substring(start, end));
+    start = end;
+    y += 8;
+  }
+}
+
+void print_right_aligned(const String& text, int y) {
+  display.setCursor(kDisplayWidth - 6 * text.length(), y);
+  display.print(text);
+}
+
+const char* severity_label(Severity severity) {
+  switch (severity) {
+    case Severity::kEmergency:
+      return "EMERGENCY";
+    case Severity::kAlarm:
+      return "ALARM";
+    case Severity::kWarn:
+      return "WARNING";
+    default:
+      return "ALERT";
+  }
+}
+
+// First line: the IP address and whether the device is its own access
+// point or a client of an infrastructure network.
+void draw_network() {
+  display.setCursor(0, 0);
+  if (WiFi.isConnected()) {
+    display.print(WiFi.localIP().toString());
+    print_right_aligned("INFRA", 0);
+  } else if (WiFi.getMode() & WIFI_MODE_AP) {
+    display.print(WiFi.softAPIP().toString());
+    print_right_aligned("AP", 0);
+  } else {
+    display.print("No WiFi");
+  }
+}
+
+// Second line: whether the Signal K server is connected and whether there
+// is traffic on the NMEA 2000 bus.
+void draw_streams() {
+  const bool n2k_active = n2k_message_received &&
+                          millis() - n2k_message_at_ms < kN2kStreamTimeoutMs;
+  display.setCursor(0, 8);
+  display.print(signalk_connected() ? "SK:ON" : "SK:--");
+  print_right_aligned(n2k_active ? "N2K:ON" : "N2K:--", 8);
+  if (tts == nullptr) {
+    display.setCursor((kDisplayWidth - 6 * 8) / 2, 8);
+    display.print("NO AUDIO");
+  }
+}
+
+// The rest of the screen: source, severity, state and message of the latest
+// notification.
+void draw_latest_notification() {
+  const LatestNotification& latest = latest_notification;
+  display.setCursor(0, 21);
+  if (!latest.received) {
+    display.print("No notifications");
+    return;
+  }
+  display.print(latest.from_signalk ? "SK " : "N2K ");
+  display.print(severity_label(latest.severity));
+  const auto it = alarms.find(latest.key);
+  const char* state = "CLEARED";
+  if (it != alarms.end()) {
+    const Alarm& alarm = it->second;
+    state = alarm.is_acknowledged() ? "ACK"
+            : alarm.snoozed         ? "SNOOZED"
+            : !alarm.audible        ? "SILENCED"
+                                    : "ACTIVE";
+  }
+  print_right_aligned(state, 21);
+  display.setCursor(0, 30);
+  print_wrapped(to_display_text(latest.message), kDisplayMessageLines);
+}
+
+bool display_answers() {
+  Wire.beginTransmission(OLED_I2C_ADDRESS);
+  return Wire.endTransmission() == 0;
+}
+
+bool setup_display() {
+  if (!display_answers()) {
+    return false;
+  }
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDRESS, true, false)) {
+    ESP_LOGE(__FILENAME__, "Failed to start the display");
+    return false;
+  }
+  display.cp437(true);
+  display.setTextWrap(false);
+  display.setTextColor(SSD1306_WHITE);
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Outlook Guardian");
+  display.display();
+  return true;
+}
+
+void update_display() {
+  static uint32_t shown_hash = 0;
+  static bool dimmed = false;
+  if (!display_found) {
+    // Not connected, or not ready yet at startup: look for it now and then.
+    static uint32_t probed_at_ms = 0;
+    if (millis() - probed_at_ms < kDisplayProbeIntervalMs) {
+      return;
+    }
+    probed_at_ms = millis();
+    display_found = setup_display();
+    if (!display_found) {
+      return;
+    }
+    ESP_LOGI(__FILENAME__, "Display found");
+    shown_hash = 0;
+    dimmed = false;
+  }
+  display.clearDisplay();
+  draw_network();
+  draw_streams();
+  display.drawFastHLine(0, 18, kDisplayWidth, SSD1306_WHITE);
+  draw_latest_notification();
+
+  // Sending a frame takes a few tens of milliseconds: do it only when the
+  // picture has changed.
+  uint32_t hash = 2166136261UL;
+  const uint8_t* buffer = display.getBuffer();
+  for (size_t i = 0; i < kDisplayWidth * kDisplayHeight / 8; i++) {
+    hash = (hash ^ buffer[i]) * 16777619UL;
+  }
+  if (hash != shown_hash) {
+    if (!display_answers()) {
+      ESP_LOGW(__FILENAME__, "Display lost");
+      display_found = false;
+      return;
+    }
+    shown_hash = hash;
+    display.display();
+  }
+  // Spare the OLED while no alarm is raised.
+  if (dimmed != alarms.empty()) {
+    dimmed = alarms.empty();
+    display.dim(dimmed);
   }
 }
 
@@ -430,8 +828,7 @@ bool json_array_contains(JsonVariantConst array, const char* text) {
   return false;
 }
 
-void handle_sk_notification(const SKPathValue& notification) {
-  const JsonVariantConst value = notification.value;
+void handle_sk_notification(const String& path, JsonVariantConst value) {
   const String state = value["state"] | "";
   Severity severity = Severity::kNone;
   if (state == "alert") {
@@ -445,7 +842,7 @@ void handle_sk_notification(const SKPathValue& notification) {
   }
   if (severity == Severity::kNone) {
     // Removed (null value), or back to "normal" or "nominal".
-    alarms.erase(notification.path);
+    alarms.erase(path);
     return;
   }
   // `method` says how to indicate the alarm. Other devices acknowledge it
@@ -461,9 +858,49 @@ void handle_sk_notification(const SKPathValue& notification) {
   if (has_method) {
     serializeJson(method, method_json);
   }
-  raise_alarm(notification.path, true, severity, value["message"] | "",
+  raise_alarm(path, true, severity, value["message"] | "",
               audible, acknowledged, method_json);
 }
+
+// Whether the text matches the pattern, in which `*` stands for any run of
+// characters.
+bool glob_match(const char* pattern, const char* text) {
+  const char* star = nullptr;
+  const char* retry = nullptr;
+  while (*text != '\0') {
+    if (*pattern == '*') {
+      star = pattern++;
+      retry = text;
+    } else if (*pattern == *text) {
+      pattern++;
+      text++;
+    } else if (star != nullptr) {
+      pattern = star + 1;
+      text = ++retry;
+    } else {
+      return false;
+    }
+  }
+  while (*pattern == '*') {
+    pattern++;
+  }
+  return *pattern == '\0';
+}
+
+// Subscribes to one of the configured notification paths, which may contain
+// wildcards, and takes the notifications received on it.
+class NotificationListener : public SKListener {
+ public:
+  NotificationListener(const String& path) : SKListener(path, 1000) {}
+
+  bool matches(const String& path) const override {
+    return glob_match(sk_path.c_str(), path.c_str());
+  }
+
+  void parse_value(const JsonObject& json) override {
+    handle_sk_notification(json["path"].as<String>(), json["value"]);
+  }
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // NMEA 2000 alerts
@@ -677,6 +1114,8 @@ void handle_n2k_alert_text(const tN2kMsg& msg) {
 }
 
 void handle_n2k_message(const tN2kMsg& msg) {
+  n2k_message_received = true;
+  n2k_message_at_ms = millis();
   // NMEA 2000 is the fallback: the Signal K server reports the alarms while
   // it is connected.
   if (signalk_connected()) {
@@ -694,6 +1133,10 @@ void handle_n2k_message(const tN2kMsg& msg) {
 // arriving after that changes the message, which is then spoken again.
 void raise_n2k_alarms() {
   for (auto& [key, alert] : n2k_alerts) {
+    if (!sources->n2k_alert_enabled(alert.type, alert.category)) {
+      alarms.erase(key);
+      continue;
+    }
     if (alert.raised &&
         (alert.text.length() > 0 ||
          millis() - alert.raised_at_ms > kN2kAlertTextWaitMs)) {
@@ -723,6 +1166,32 @@ void check_alarm_source() {
   clear_alarms(!connected);
 }
 
+// How long the device may fail to join the WiFi network before it opens its
+// own access point, so that the web interface stays within reach.
+constexpr uint32_t kAccessPointFallbackMs = 60000;
+constexpr char kAccessPointFallbackPassword[] = "thisisfine";
+
+// With the access point disabled in the WiFi settings, a wrong password or a
+// network that is gone would lock the user out of the device.
+void check_access_point_fallback() {
+  static uint32_t last_ok_ms = 0;
+  if (WiFi.isConnected() || (WiFi.getMode() & WIFI_MODE_AP)) {
+    last_ok_ms = millis();
+    return;
+  }
+  if (millis() - last_ok_ms < kAccessPointFallbackMs) {
+    return;
+  }
+  const String ssid = SensESPBaseApp::get_hostname();
+  ESP_LOGW(__FILENAME__, "No WiFi connection: opening the access point %s",
+           ssid.c_str());
+  // The client keeps trying to join the configured network.
+  WiFi.mode(WIFI_AP_STA);
+  if (!WiFi.softAP(ssid.c_str(), kAccessPointFallbackPassword)) {
+    ESP_LOGE(__FILENAME__, "Failed to start the access point");
+  }
+}
+
 // Call `on_press` when the push button wired between `pin` and ground is
 // pressed.
 void setup_button(uint8_t pin, void (*on_press)()) {
@@ -746,31 +1215,60 @@ void setup() {
                     ->set_system_status_led(alarm_led)
                     ->get_app();
 
+  // The display is optional: everything else works without it.
+  Wire.begin(OLED_SDA_PIN, OLED_SCL_PIN, 400000);
+  display_found = setup_display();
+  if (!display_found) {
+    ESP_LOGW(__FILENAME__, "No display at I2C address 0x%02x",
+             OLED_I2C_ADDRESS);
+  }
+
   config = std::make_shared<GuardianConfig>("/Outlook Guardian/Speech");
   ConfigItem(config)
       ->set_title("Speech and alarms")
       ->set_description(
-          "Language and voice of the spoken alarms, and how they are "
-          "repeated and snoozed.");
+          "Language and voice of the spoken alarms, how they are repeated "
+          "and snoozed, and the welcome message.");
+
+  sources = std::make_shared<SourcesConfig>("/Outlook Guardian/Sources");
+  ConfigItem(sources)
+      ->set_title("Alarm sources")
+      ->set_description(
+          "The Signal K notification paths to subscribe to, and the NMEA "
+          "2000 alerts to announce while the Signal K server is not "
+          "connected.")
+      ->set_requires_restart(true);
 
   amplifier = std::make_shared<MAX98357A>(
       MAX98357A_BCLK_PIN, MAX98357A_LRC_PIN, MAX98357A_DIN_PIN);
-  if (!amplifier->begin()) {
+  if (amplifier->begin()) {
+    tts = std::make_shared<PicoTTS>(amplifier, config->language(),
+                                    config->volume());
+    if (!tts->begin()) {
+      ESP_LOGE(__FILENAME__, "Failed to start the speech synthesis");
+      tts.reset();
+    }
+  } else {
     ESP_LOGE(__FILENAME__, "Failed to start the I2S output");
-    return;
+  }
+  if (tts == nullptr) {
+    // Without a voice the alarms still reach the LED and the display, but
+    // the fault must not go unnoticed.
+    alarm_led->set_fault(true);
+  } else {
+    config->on_change([]() { tts->set_volume(config->volume()); });
+  }
+  if (config->welcome_enabled()) {
+    say(config->welcome_message().length() > 0
+            ? config->welcome_message()
+            : String("Signal K Outlook Guardian ") + phrases().active);
   }
 
-  tts = std::make_shared<PicoTTS>(amplifier, config->language(),
-                                  config->volume());
-  if (!tts->begin()) {
-    return;
+  // The listeners live as long as the firmware runs.
+  for (const String& path : sources->signalk_paths()) {
+    ESP_LOGI(__FILENAME__, "Subscribing to %s", path.c_str());
+    new NotificationListener(path);
   }
-  config->on_change([]() { tts->set_volume(config->volume()); });
-  say(String("Signal K Outlook Guardian ") + phrases().active);
-
-  notification_listener = std::make_shared<SKPrefixListener>("notifications.");
-  notification_listener->connect_to(
-      std::make_shared<LambdaConsumer<SKPathValue>>(handle_sk_notification));
 
   nmea2000 = new tNMEA2000_esp32(static_cast<gpio_num_t>(N2K_CAN_TX_PIN),
                                  static_cast<gpio_num_t>(N2K_CAN_RX_PIN));
@@ -787,6 +1285,8 @@ void setup() {
     check_alarm_source();
     raise_n2k_alarms();
     process_alarms();
+    check_access_point_fallback();
+    update_display();
   });
 }
 

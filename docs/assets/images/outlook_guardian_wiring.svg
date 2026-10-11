@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 700" width="1160" height="700" font-family="Helvetica, Arial, sans-serif" font-size="13">
+<title>Outlook Guardian wiring diagram</title>
+<rect width="1160" height="700" fill="#ffffff"/>
+<rect x="440" y="50" width="240" height="600" rx="6" fill="#e3f2fd" stroke="#424242" stroke-width="1.5"/>
+<text x="560.0" y="70" text-anchor="middle" font-weight="bold" fill="#212121">ESP32-S3-DevKitC-1</text>
+<text x="560.0" y="641" text-anchor="middle" font-size="11" fill="#616161">N16R8 (16 MB flash, 8 MB PSRAM)</text>
+<text x="560.0" y="94" text-anchor="middle" fill="#616161" font-size="11">RGB LED: GPIO 48 (v1.0) / 38 (v1.1)</text>
+<rect x="70" y="80" width="190" height="180" rx="6" fill="#f5f5f5" stroke="#424242" stroke-width="1.5"/>
+<text x="165.0" y="100" text-anchor="middle" font-weight="bold" fill="#212121">MAX98357A</text>
+<text x="165.0" y="251" text-anchor="middle" font-size="11" fill="#616161">SD, GAIN: not connected</text>
+<line x1="260" y1="115" x2="440" y2="115" stroke="#c62828" stroke-width="2"/>
+<circle cx="260" cy="115" r="3.5" fill="#c62828"/>
+<circle cx="440" cy="115" r="3.5" fill="#c62828"/>
+<text x="252" y="119" text-anchor="end" fill="#212121" font-size="13">VIN</text>
+<text x="448" y="119" text-anchor="start" fill="#212121" font-size="13">5V</text>
+<line x1="260" y1="145" x2="440" y2="145" stroke="#212121" stroke-width="2"/>
+<circle cx="260" cy="145" r="3.5" fill="#212121"/>
+<circle cx="440" cy="145" r="3.5" fill="#212121"/>
+<text x="252" y="149" text-anchor="end" fill="#212121" font-size="13">GND</text>
+<text x="448" y="149" text-anchor="start" fill="#212121" font-size="13">GND</text>
+<line x1="260" y1="175" x2="440" y2="175" stroke="#1565c0" stroke-width="2"/>
+<circle cx="260" cy="175" r="3.5" fill="#1565c0"/>
+<circle cx="440" cy="175" r="3.5" fill="#1565c0"/>
+<text x="252" y="179" text-anchor="end" fill="#212121" font-size="13">LRC</text>
+<text x="448" y="179" text-anchor="start" fill="#212121" font-size="13">GPIO 4</text>
+<line x1="260" y1="205" x2="440" y2="205" stroke="#1565c0" stroke-width="2"/>
+<circle cx="260" cy="205" r="3.5" fill="#1565c0"/>
+<circle cx="440" cy="205" r="3.5" fill="#1565c0"/>
+<text x="252" y="209" text-anchor="end" fill="#212121" font-size="13">BCLK</text>
+<text x="448" y="209" text-anchor="start" fill="#212121" font-size="13">GPIO 5</text>
+<line x1="260" y1="235" x2="440" y2="235" stroke="#1565c0" stroke-width="2"/>
+<circle cx="260" cy="235" r="3.5" fill="#1565c0"/>
+<circle cx="440" cy="235" r="3.5" fill="#1565c0"/>
+<text x="252" y="239" text-anchor="end" fill="#212121" font-size="13">DIN</text>
+<text x="448" y="239" text-anchor="start" fill="#212121" font-size="13">GPIO 6</text>
+<line x1="70" y1="150" x2="40" y2="150" stroke="#2e7d32" stroke-width="2"/>
+<line x1="70" y1="190" x2="40" y2="190" stroke="#2e7d32" stroke-width="2"/>
+<circle cx="70" cy="150" r="3.5" fill="#2e7d32"/>
+<circle cx="70" cy="190" r="3.5" fill="#2e7d32"/>
+<text x="78" y="154" text-anchor="start" fill="#212121" font-size="13">+</text>
+<text x="78" y="194" text-anchor="start" fill="#212121" font-size="13">−</text>
+<polygon points="40,140 40,200 28,200 28,140" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+<polygon points="28,140 10,122 10,218 28,200" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+<text x="12" y="240" text-anchor="start" fill="#2e7d32" font-size="11">Speaker</text>
+<text x="12" y="254" text-anchor="start" fill="#2e7d32" font-size="11">4–8 Ω</text>
+<rect x="70" y="300" width="190" height="150" rx="6" fill="#f5f5f5" stroke="#424242" stroke-width="1.5"/>
+<text x="165.0" y="320" text-anchor="middle" font-weight="bold" fill="#212121">SSD1306 OLED</text>
+<text x="165.0" y="441" text-anchor="middle" font-size="11" fill="#616161">128x64, I2C 0x3C (optional)</text>
+<line x1="260" y1="335" x2="440" y2="335" stroke="#c62828" stroke-width="2"/>
+<circle cx="260" cy="335" r="3.5" fill="#c62828"/>
+<circle cx="440" cy="335" r="3.5" fill="#c62828"/>
+<text x="252" y="339" text-anchor="end" fill="#212121" font-size="13">VCC</text>
+<text x="448" y="339" text-anchor="start" fill="#212121" font-size="13">3V3</text>
+<line x1="260" y1="365" x2="440" y2="365" stroke="#212121" stroke-width="2"/>
+<circle cx="260" cy="365" r="3.5" fill="#212121"/>
+<circle cx="440" cy="365" r="3.5" fill="#212121"/>
+<text x="252" y="369" text-anchor="end" fill="#212121" font-size="13">GND</text>
+<text x="448" y="369" text-anchor="start" fill="#212121" font-size="13">GND</text>
+<line x1="260" y1="395" x2="440" y2="395" stroke="#1565c0" stroke-width="2"/>
+<circle cx="260" cy="395" r="3.5" fill="#1565c0"/>
+<circle cx="440" cy="395" r="3.5" fill="#1565c0"/>
+<text x="252" y="399" text-anchor="end" fill="#212121" font-size="13">SDA</text>
+<text x="448" y="399" text-anchor="start" fill="#212121" font-size="13">GPIO 8</text>
+<line x1="260" y1="425" x2="440" y2="425" stroke="#1565c0" stroke-width="2"/>
+<circle cx="260" cy="425" r="3.5" fill="#1565c0"/>
+<circle cx="440" cy="425" r="3.5" fill="#1565c0"/>
+<text x="252" y="429" text-anchor="end" fill="#212121" font-size="13">SCL</text>
+<text x="448" y="429" text-anchor="start" fill="#212121" font-size="13">GPIO 9</text>
+<line x1="440" y1="530" x2="300" y2="530" stroke="#1565c0" stroke-width="2"/>
+<circle cx="440" cy="530" r="3.5" fill="#1565c0"/>
+<text x="448" y="534" text-anchor="start" fill="#212121" font-size="13">GPIO 15</text>
+<circle cx="300" cy="530" r="4" fill="#fff" stroke="#212121" stroke-width="1.5"/>
+<circle cx="250" cy="530" r="4" fill="#fff" stroke="#212121" stroke-width="1.5"/>
+<line x1="248" y1="516" x2="302" y2="516" stroke="#212121" stroke-width="2"/>
+<line x1="275.0" y1="516" x2="275.0" y2="504" stroke="#212121" stroke-width="2"/>
+<line x1="246" y1="530" x2="180" y2="530" stroke="#212121" stroke-width="2"/>
+<line x1="180" y1="530" x2="180" y2="540" stroke="#212121" stroke-width="2"/>
+<line x1="170" y1="540" x2="190" y2="540" stroke="#212121" stroke-width="2"/>
+<line x1="174" y1="544" x2="186" y2="544" stroke="#212121" stroke-width="2"/>
+<line x1="178" y1="548" x2="182" y2="548" stroke="#212121" stroke-width="2"/>
+<text x="275.0" y="496" text-anchor="middle" fill="#212121" font-size="12" font-weight="bold">Acknowledge (N.O.)</text>
+<text x="166" y="538" text-anchor="end" fill="#616161" font-size="11">GND</text>
+<line x1="440" y1="610" x2="300" y2="610" stroke="#1565c0" stroke-width="2"/>
+<circle cx="440" cy="610" r="3.5" fill="#1565c0"/>
+<text x="448" y="614" text-anchor="start" fill="#212121" font-size="13">GPIO 16</text>
+<circle cx="300" cy="610" r="4" fill="#fff" stroke="#212121" stroke-width="1.5"/>
+<circle cx="250" cy="610" r="4" fill="#fff" stroke="#212121" stroke-width="1.5"/>
+<line x1="248" y1="596" x2="302" y2="596" stroke="#212121" stroke-width="2"/>
+<line x1="275.0" y1="596" x2="275.0" y2="584" stroke="#212121" stroke-width="2"/>
+<line x1="246" y1="610" x2="180" y2="610" stroke="#212121" stroke-width="2"/>
+<line x1="180" y1="610" x2="180" y2="620" stroke="#212121" stroke-width="2"/>
+<line x1="170" y1="620" x2="190" y2="620" stroke="#212121" stroke-width="2"/>
+<line x1="174" y1="624" x2="186" y2="624" stroke="#212121" stroke-width="2"/>
+<line x1="178" y1="628" x2="182" y2="628" stroke="#212121" stroke-width="2"/>
+<text x="275.0" y="576" text-anchor="middle" fill="#212121" font-size="12" font-weight="bold">Snooze (N.O.)</text>
+<text x="166" y="618" text-anchor="end" fill="#616161" font-size="11">GND</text>
+<rect x="860" y="80" width="190" height="160" rx="6" fill="#f5f5f5" stroke="#424242" stroke-width="1.5"/>
+<text x="955.0" y="100" text-anchor="middle" font-weight="bold" fill="#212121">SN65HVD230</text>
+<text x="955.0" y="231" text-anchor="middle" font-size="11" fill="#616161">3.3 V CAN transceiver (optional)</text>
+<line x1="680" y1="115" x2="860" y2="115" stroke="#c62828" stroke-width="2"/>
+<circle cx="860" cy="115" r="3.5" fill="#c62828"/>
+<circle cx="680" cy="115" r="3.5" fill="#c62828"/>
+<text x="868" y="119" text-anchor="start" fill="#212121" font-size="13">3V3</text>
+<text x="672" y="119" text-anchor="end" fill="#212121" font-size="13">3V3</text>
+<line x1="680" y1="145" x2="860" y2="145" stroke="#212121" stroke-width="2"/>
+<circle cx="860" cy="145" r="3.5" fill="#212121"/>
+<circle cx="680" cy="145" r="3.5" fill="#212121"/>
+<text x="868" y="149" text-anchor="start" fill="#212121" font-size="13">GND</text>
+<text x="672" y="149" text-anchor="end" fill="#212121" font-size="13">GND</text>
+<line x1="680" y1="175" x2="860" y2="175" stroke="#1565c0" stroke-width="2"/>
+<circle cx="860" cy="175" r="3.5" fill="#1565c0"/>
+<circle cx="680" cy="175" r="3.5" fill="#1565c0"/>
+<text x="868" y="179" text-anchor="start" fill="#212121" font-size="13">CTX (D)</text>
+<text x="672" y="179" text-anchor="end" fill="#212121" font-size="13">GPIO 17</text>
+<line x1="680" y1="205" x2="860" y2="205" stroke="#1565c0" stroke-width="2"/>
+<circle cx="860" cy="205" r="3.5" fill="#1565c0"/>
+<circle cx="680" cy="205" r="3.5" fill="#1565c0"/>
+<text x="868" y="209" text-anchor="start" fill="#212121" font-size="13">CRX (R)</text>
+<text x="672" y="209" text-anchor="end" fill="#212121" font-size="13">GPIO 18</text>
+<line x1="1050" y1="145" x2="1080" y2="145" stroke="#2e7d32" stroke-width="2"/>
+<circle cx="1050" cy="145" r="3.5" fill="#2e7d32"/>
+<text x="1042" y="149" text-anchor="end" fill="#212121" font-size="13">CANH</text>
+<text x="1084" y="149" text-anchor="start" fill="#2e7d32" font-size="12" font-weight="bold">NET-H</text>
+<line x1="1050" y1="175" x2="1080" y2="175" stroke="#2e7d32" stroke-width="2"/>
+<circle cx="1050" cy="175" r="3.5" fill="#2e7d32"/>
+<text x="1042" y="179" text-anchor="end" fill="#212121" font-size="13">CANL</text>
+<text x="1084" y="179" text-anchor="start" fill="#2e7d32" font-size="12" font-weight="bold">NET-L</text>
+<text x="1084" y="164" text-anchor="start" fill="#616161" font-size="10">NMEA</text>
+<text x="1084" y="194" text-anchor="start" fill="#616161" font-size="10">2000</text>
+<text x="860" y="262" text-anchor="start" fill="#616161" font-size="11">NET-H: white wire, NET-L: blue wire</text>
+<text x="860" y="278" text-anchor="start" fill="#616161" font-size="11">No 120 Ω terminator on the breakout</text>
+<rect x="860" y="400" width="190" height="130" rx="6" fill="#f5f5f5" stroke="#424242" stroke-width="1.5"/>
+<text x="955.0" y="420" text-anchor="middle" font-weight="bold" fill="#212121">DC-DC converter</text>
+<text x="955.0" y="521" text-anchor="middle" font-size="11" fill="#616161">9–36 V in, 5 V / 2 A out</text>
+<line x1="680" y1="440" x2="860" y2="440" stroke="#c62828" stroke-width="2"/>
+<circle cx="860" cy="440" r="3.5" fill="#c62828"/>
+<circle cx="680" cy="440" r="3.5" fill="#c62828"/>
+<text x="868" y="444" text-anchor="start" fill="#212121" font-size="13">OUT+</text>
+<text x="672" y="444" text-anchor="end" fill="#212121" font-size="13">5V</text>
+<line x1="680" y1="480" x2="860" y2="480" stroke="#212121" stroke-width="2"/>
+<circle cx="860" cy="480" r="3.5" fill="#212121"/>
+<circle cx="680" cy="480" r="3.5" fill="#212121"/>
+<text x="868" y="484" text-anchor="start" fill="#212121" font-size="13">OUT−</text>
+<text x="672" y="484" text-anchor="end" fill="#212121" font-size="13">GND</text>
+<line x1="1050" y1="440" x2="1080" y2="440" stroke="#c62828" stroke-width="2"/>
+<circle cx="1050" cy="440" r="3.5" fill="#c62828"/>
+<text x="1042" y="444" text-anchor="end" fill="#212121" font-size="13">IN+</text>
+<line x1="1050" y1="480" x2="1080" y2="480" stroke="#212121" stroke-width="2"/>
+<circle cx="1050" cy="480" r="3.5" fill="#212121"/>
+<text x="1042" y="484" text-anchor="end" fill="#212121" font-size="13">IN−</text>
+<text x="1084" y="444" text-anchor="start" fill="#c62828" font-size="12" font-weight="bold">+12 V</text>
+<text x="1084" y="484" text-anchor="start" fill="#212121" font-size="12" font-weight="bold">0 V</text>
+<text x="860" y="552" text-anchor="start" fill="#616161" font-size="11">+12 V through a 1 A fuse</text>
+<text x="860" y="568" text-anchor="start" fill="#616161" font-size="11">Do not use together with USB power</text>
+<line x1="720" y1="620" x2="742" y2="620" stroke="#c62828" stroke-width="2"/>
+<text x="748" y="624" text-anchor="start" fill="#424242" font-size="11">Power</text>
+<line x1="800" y1="620" x2="822" y2="620" stroke="#212121" stroke-width="2"/>
+<text x="828" y="624" text-anchor="start" fill="#424242" font-size="11">Ground</text>
+<line x1="890" y1="620" x2="912" y2="620" stroke="#1565c0" stroke-width="2"/>
+<text x="918" y="624" text-anchor="start" fill="#424242" font-size="11">Signal</text>
+<line x1="970" y1="620" x2="992" y2="620" stroke="#2e7d32" stroke-width="2"/>
+<text x="998" y="624" text-anchor="start" fill="#424242" font-size="11">Speaker / CAN bus</text>
+</svg>

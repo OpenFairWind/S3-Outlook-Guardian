@@ -14,12 +14,13 @@ It is built with SensESP and lives in this repository as the application [`examp
 
 ## What it does
 
-- **Speaks Signal K notifications.** It subscribes to `notifications.*` on the Signal K server and speaks the `message` of every raised notification.
+- **Speaks Signal K notifications.** It subscribes to `notifications.*` on the Signal K server, or to the paths you choose, and speaks the `message` of every raised notification.
 - **Falls back to NMEA 2000.** When the Signal K server is not connected, it listens to the NMEA 2000 alert messages directly on the bus, composes a sentence from each alert and speaks it.
 - **Shows the alarm on the RGB LED.** The color follows the most severe alarm, and the LED blinks until somebody reacts.
+- **Shows its status on an optional OLED display.** A small SSD1306 display shows the IP address, the WiFi mode, the state of the Signal K and NMEA 2000 streams and the latest notification received.
 - **Has two push buttons**, one to acknowledge and one to snooze. For Signal K notifications the button press is sent to the server, so the other displays on board follow.
 - **Speaks six languages.** The language, voice, speed and volume are chosen in the web interface.
-- At startup it says "Signal K Outlook Guardian active".
+- At startup it says "Signal K Outlook Guardian active", or a welcome message of your own, or nothing.
 
 Speech is synthesized on the device with the [PicoTTS](https://github.com/DiUS/esp-picotts) engine and played through a MAX98357A I2S amplifier. No internet connection or cloud service is involved.
 

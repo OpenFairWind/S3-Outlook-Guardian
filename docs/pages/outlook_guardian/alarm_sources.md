@@ -18,7 +18,7 @@ When the source changes, the alarms of the other source are dropped, as they are
 
 ## Signal K notifications
 
-The device subscribes to `notifications.*` of the vessel. A notification value looks like this:
+The device subscribes to `notifications.*` of the vessel, or to the paths set in the **Alarm sources** card of the web interface (see [Step 4: Configure and test](usage)). A notification value looks like this:
 
 ```json
 {
@@ -109,6 +109,8 @@ The category and type words are in the configured language. The description and 
 | Alarm | Alarm | Red |
 | Warning | Warning | Yellow |
 | Caution | Alert | Blue |
+
+The alert types and categories to announce are chosen in the **Alarm sources** card of the web interface. The alerts left out are ignored altogether.
 
 ### Alert state
 
