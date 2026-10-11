@@ -2,6 +2,8 @@
 
 The Outlook Guardian is a talking alarm annunciator for boats: an ESP32-S3 device that listens for vessel alarms and reads them out loud.
 
+![Outlook Guardian prototype: an ESP32-S3 board, the I2S amplifier and a speaker in a waterproof enclosure](docs/assets/images/outlook_guardian_prototype.jpg)
+
 * Speaks the message of every [Signal K](https://signalk.org) notification that is raised
 * Falls back to the NMEA 2000 alert messages (PGN 126983 and 126985) when the Signal K server is not connected
 * Shows the severity of the alarm on the on-board RGB LED, which flashes red if the audio output fails to start
