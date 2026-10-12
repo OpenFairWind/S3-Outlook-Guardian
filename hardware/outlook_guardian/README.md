@@ -121,5 +121,12 @@ Not checked, and needing a person:
 
 ## Licence
 
-The outline and the connector positions derive from the Hat Labs HALMET hardware design, licensed
-under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The Outlook Guardian board design in this directory (schematic, PCB layout, footprints and
+fabrication outputs) is licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); the full text is in [LICENSE](LICENSE).
+
+The outline and the connector positions derive from the Hat Labs HALMET hardware design, also
+licensed under CC BY 4.0.
+
+This covers the hardware only. The firmware in the rest of the repository stays under the
+Apache License 2.0, as in the [LICENSE](../../LICENSE) file at the repository root.

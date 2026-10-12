@@ -75,6 +75,11 @@ Reference:
 
 The firmware builds, flashes and starts on the board. The audio output, the handling of live Signal K notifications and the reception of NMEA 2000 alerts have not yet been tested against real equipment.
 
+## License
+
+* Firmware and everything else in this repository: Apache License 2.0, see [LICENSE](LICENSE)
+* Outlook Guardian board design in [hardware/outlook_guardian](hardware/outlook_guardian): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), see [hardware/outlook_guardian/LICENSE](hardware/outlook_guardian/LICENSE)
+
 # About SensESP
 
 The rest of this file is the README of SensESP, the framework this project is built on.
