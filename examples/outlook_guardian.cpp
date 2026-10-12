@@ -59,6 +59,11 @@ using namespace sensesp;
 #ifndef OLED_I2C_ADDRESS
 #define OLED_I2C_ADDRESS 0x3C
 #endif
+// Contrast of the display while no alarm is raised, 1 to 255. Not 0: some
+// panels go completely dark there.
+#ifndef OLED_DIM_CONTRAST
+#define OLED_DIM_CONTRAST 0x20
+#endif
 
 // Signal K Outlook Guardian: speaks vessel alarms through a MAX98357A I2S
 // amplifier using PicoTTS text-to-speech and shows them on the on-board RGB
@@ -812,7 +817,12 @@ void update_display() {
   // Spare the OLED while no alarm is raised.
   if (dimmed != alarms.empty()) {
     dimmed = alarms.empty();
-    display.dim(dimmed);
+    if (dimmed) {
+      display.ssd1306_command(SSD1306_SETCONTRAST);
+      display.ssd1306_command(OLED_DIM_CONTRAST);
+    } else {
+      display.dim(false);
+    }
   }
 }
 
